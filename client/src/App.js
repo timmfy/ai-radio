@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import "./App.css";
 
 function App() {
@@ -24,36 +24,50 @@ function App() {
     if (token) setAccessToken(token);
   }, []);
 
+  // ✅ 1. Helper function
+  const initPlayer = useCallback(() => {
+    const player = new window.Spotify.Player({
+      name: "AI Radio Player",
+      getOAuthToken: (cb) => cb(accessToken),
+      volume: 0.5,
+    });
+
+    player.addListener("ready", ({ device_id }) => {
+      setDeviceId(device_id);
+    });
+
+    player.addListener("player_state_changed", (state) => {
+      if (!state) return;
+      setIsPlaying(!state.paused);
+      setPosition(state.position);
+      setDuration(state.duration);
+    });
+
+    player.connect();
+    playerRef.current = player;
+  }, [accessToken]);
+
+  // ✅ 2. useEffect to load SDK safely
   useEffect(() => {
-    if (!accessToken || typeof window.Spotify === "undefined") return;
+    if (!accessToken) return;
+
+    if (window.Spotify) {
+      initPlayer();
+      return;
+    }
 
     const script = document.createElement("script");
     script.src = "https://sdk.scdn.co/spotify-player.js";
     script.async = true;
-    document.body.appendChild(script);
 
-    window.onSpotifyWebPlaybackSDKReady = () => {
-      const player = new window.Spotify.Player({
-        name: "AI Radio Player",
-        getOAuthToken: (cb) => cb(accessToken),
-        volume: 0.5,
-      });
-
-      player.addListener("ready", ({ device_id }) => {
-        setDeviceId(device_id);
-      });
-
-      player.addListener("player_state_changed", (state) => {
-        if (!state) return;
-        setIsPlaying(!state.paused);
-        setPosition(state.position);
-        setDuration(state.duration);
-      });
-
-      player.connect();
-      playerRef.current = player;
+    script.onload = () => {
+      window.onSpotifyWebPlaybackSDKReady = () => {
+        initPlayer();
+      };
     };
-  }, [accessToken]);
+
+    document.body.appendChild(script);
+  }, [accessToken, initPlayer]);
 
   useEffect(() => {
     const interval = setInterval(() => {
