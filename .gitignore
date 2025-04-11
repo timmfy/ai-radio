@@ -1,0 +1,20 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Node
+node_modules/
+build/
+.env
+
+# Go
+bin/
+*.exe
+*.out
+*.test
+
+# Env
+.env
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
